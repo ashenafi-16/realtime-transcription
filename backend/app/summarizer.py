@@ -2,9 +2,10 @@ import os
 import anthropic
 from dotenv import load_dotenv
 
-load_dotenv()
+# Load from backend/.env specifically
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
 
-client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 
 async def summarize_transcript(transcript: str) -> str:
@@ -13,29 +14,29 @@ async def summarize_transcript(transcript: str) -> str:
     Returns a structured summary with key points and action items.
     """
     try:
-        message = client.messages.create(
-            model="claude-opus-4-5",
+        message = await client.messages.create(
+            model="claude-sonnet-4-20250514",
             max_tokens=1024,
-            messages = [
+            messages=[
                 {
                     "role": "user",
                     "content": f"""You are a helpful assistant that summarizes meeting transcripts.
-                    Analyze the following transcript and return a clear, structured summary.
+Analyze the following transcript and return a clear, structured summary.
 
-                    Format your response exactly like this:
+Format your response exactly like this:
 
-                    KEY POINTS:
-                    - [key point 1]
-                    - [key point 2]
-                    - [key point 3]
+KEY POINTS:
+- [key point 1]
+- [key point 2]
+- [key point 3]
 
-                    ACTION ITEMS:
-                    - [action item 1]
-                    - [action item 2]
+ACTION ITEMS:
+- [action item 1]
+- [action item 2]
 
-                    TRANSCRIPT:
-                    {transcript}
-                    """
+TRANSCRIPT:
+{transcript}
+"""
                 }
             ]
         )

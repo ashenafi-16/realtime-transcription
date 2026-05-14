@@ -3,8 +3,9 @@ import React from 'react';
 const STATUS_MESSAGES = {
     idle: "Click the button to start recording.",
     recording: "Recording... speak clearly into your microphone.",
-    processing: "generating summary, please wait...",
-    done: "Done! Your summary is ready below",
+    processing: "Generating summary, please wait...",
+    done: "Done! Your summary is ready below.",
+    error: "Something went wrong. Please try again.",
 };
 
 const STATUS_COLORS = {
@@ -12,6 +13,7 @@ const STATUS_COLORS = {
   recording: "#ef4444",  // red
   processing: "#f59e0b", // amber
   done: "#22c55e",       // green
+  error: "#ef4444",      // red
 };
 
 export default function Recorder({
@@ -52,7 +54,6 @@ export default function Recorder({
                     style={{
                         ...styles.statusDot,
                         backgroundColor: STATUS_COLORS[status] || "#9ca3af",
-                        // Animate the dot when recording
                         animation: status === "recording" ? "pulse 1.5s infinite" : "none",
                     }}
                 />
@@ -61,7 +62,6 @@ export default function Recorder({
                 </span>
             </div>
 
-            {/* pulse animation keyframes */}
             <style>{`
             @keyframes pulse {
             0%   { opacity: 1; transform: scale(1); }
