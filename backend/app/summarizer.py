@@ -1,27 +1,33 @@
-import os 
-import anthropic
+import os
+import logging
 from dotenv import load_dotenv
+from groq import Groq
 
-# Load from backend/.env specifically
+logger = logging.getLogger(__name__)
+
+# Load from backend/.env
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
 
-client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 
 async def summarize_transcript(transcript: str) -> str:
     """
-    Takes the full transcript as a string. 
-    Returns a structured summary with key points and action items.
+    Takes the full transcript as a string.
+    Returns a structured summary with key points and action items using Groq (Llama 3).
     """
     try:
-        message = await client.messages.create(
-            model="claude-sonnet-4-20250514",
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
             max_tokens=1024,
             messages=[
                 {
+                    "role": "system",
+                    "content": "You are a helpful assistant that summarizes meeting transcripts."
+                },
+                {
                     "role": "user",
-                    "content": f"""You are a helpful assistant that summarizes meeting transcripts.
-Analyze the following transcript and return a clear, structured summary.
+                    "content": f"""Analyze the following transcript and return a clear, structured summary.
 
 Format your response exactly like this:
 
@@ -35,12 +41,11 @@ ACTION ITEMS:
 - [action item 2]
 
 TRANSCRIPT:
-{transcript}
-"""
+{transcript}"""
                 }
             ]
         )
-        return message.content[0].text
+        return response.choices[0].message.content
     except Exception as e:
-        print(f"Summarization error: {e}")
+        logger.error(f"Summarization error: {e}")
         return "Summary could not be generated. Please check your API key."
