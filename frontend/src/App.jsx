@@ -1,66 +1,23 @@
-import React from "react";
-import { useTranscription } from "./hooks/useTranscription";
-import Recorder from "./components/Recorder";
-import Transcript from "./components/Transcript";
-import Summary from "./components/Summary";
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import Layout from './components/Layout';
+import LandingPage from './pages/LandingPage';
+import DashboardPage from './pages/DashboardPage';
+import HistoryPage from './pages/HistoryPage';
+import AnalyticsPage from './pages/AnalyticsPage';
+import SettingsPage from './pages/SettingsPage';
 
 export default function App() {
-  const {
-    isRecording, 
-    transcript,
-    summary,
-    status,
-    startRecording,
-    stopRecording,  
-  } = useTranscription();
-
   return (
-    <div style={styles.page}> 
-      <div style={styles.topCard}>
-        <Recorder 
-          isRecording={isRecording}
-          status={status}
-          startRecording={startRecording}
-          stopRecording={stopRecording}
-        />
-      </div>
-
-      <div style={styles.bottomGrid}> 
-        <Transcript
-          transcript={transcript}
-          isRecording={isRecording}
-        />
-        <Summary 
-          summary={summary}
-          status={status}
-        />
-      </div>
-    </div>
+    <Layout>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/history" element={<HistoryPage />} />
+        <Route path="/analytics" element={<AnalyticsPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Layout>
   );
 }
-
-const styles = {
-  page: {
-    minHeight: "100vh",
-    backgroundColor: "#f1f5f9",
-    padding: "2rem",
-    fontFamily: "'Inter', 'Segoe UI', sans-serif",
-    display: "flex",
-    flexDirection: "column",
-    gap: "1.5rem",
-    maxWidth: "1200px",
-    margin: "0 auto",
-  },
-  topCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: "16px",
-    boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
-    padding: "1rem",
-  },
-  bottomGrid: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: "1.5rem",
-    alignItems: "start",
-  },
-};

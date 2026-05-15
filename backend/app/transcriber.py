@@ -2,49 +2,76 @@ import whisper
 import subprocess
 import tempfile
 import os
+import logging
 
-model = whisper.load_model("base")
+logger = logging.getLogger(__name__)
 
-def transcribe_audio(file_path: str) -> str:
+# Cache loaded models
+_models = {}
+
+
+def _get_model(model_name: str = "base"):
+    """Load and cache a Whisper model."""
+    if model_name not in _models:
+        logger.info(f"Loading Whisper model: {model_name}")
+        _models[model_name] = whisper.load_model(model_name)
+    return _models[model_name]
+
+
+# Pre-load default model
+_get_model("base")
+
+
+def transcribe_audio(file_path: str, language: str = None) -> str:
     """
-    Takes a path to a complete webm audio file.
+    Takes a path to an audio file.
     Converts to 16kHz mono WAV via ffmpeg, then transcribes with Whisper.
+    
+    Args:
+        file_path: Path to audio file
+        language: Language code (e.g. 'en', 'es') or None for auto-detect
     """
     wav_path = None
     try:
-        # Convert webm to wav using ffmpeg for reliable Whisper decoding
         wav_path = tempfile.mktemp(suffix=".wav")
         result = subprocess.run(
             [
                 "ffmpeg", "-y",
                 "-i", file_path,
-                "-ar", "16000",       # Whisper expects 16kHz
-                "-ac", "1",           # mono
+                "-ar", "16000",
+                "-ac", "1",
                 "-f", "wav",
                 wav_path
             ],
             capture_output=True,
-            timeout=10
+            timeout=30
         )
-        
+
         if result.returncode != 0:
             stderr = result.stderr.decode()
-            print(f"FFmpeg error: {stderr[-200:]}")  # only last 200 chars
+            logger.error(f"FFmpeg error: {stderr[-300:]}")
             return ""
-        
-        # Check that the wav file has actual content
+
         if not os.path.exists(wav_path) or os.path.getsize(wav_path) < 1000:
             return ""
 
-        transcription = model.transcribe(wav_path, fp16=False, language="en")
+        model = _get_model("base")
+
+        # Build transcription kwargs
+        kwargs = {"fp16": False}
+        if language:
+            kwargs["language"] = language
+        # If no language specified, Whisper will auto-detect
+
+        transcription = model.transcribe(wav_path, **kwargs)
         text = transcription["text"]
-        print(f"Transcribed: {text[:80]}...")
+        detected_lang = transcription.get("language", "unknown")
+        logger.info(f"Transcribed ({detected_lang}): {text[:80]}...")
         return text
-    
+
     except Exception as e:
-        print(f"Transcription error: {e}")
+        logger.error(f"Transcription error: {e}")
         return ""
     finally:
-        # Clean up the wav file
         if wav_path and os.path.exists(wav_path):
             os.unlink(wav_path)

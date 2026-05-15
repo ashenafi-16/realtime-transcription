@@ -6,3 +6,10 @@ groq
 python-dotenv
 numpy
 ffmpeg-python
+sqlalchemy
+aiosqlite
+python-multipart
+slowapi
+httpx
+pytest
+pytest-asyncio

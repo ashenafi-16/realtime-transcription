@@ -1,33 +1,14 @@
-import os
 import logging
-from dotenv import load_dotenv
+from app.config import settings
 from groq import Groq
 
 logger = logging.getLogger(__name__)
 
-# Load from backend/.env
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
+client = Groq(api_key=settings.GROQ_API_KEY)
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-
-
-async def summarize_transcript(transcript: str) -> str:
-    """
-    Takes the full transcript as a string.
-    Returns a structured summary with key points and action items using Groq (Llama 3).
-    """
-    try:
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            max_tokens=1024,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a helpful assistant that summarizes meeting transcripts."
-                },
-                {
-                    "role": "user",
-                    "content": f"""Analyze the following transcript and return a clear, structured summary.
+# ── Summary format prompts ──
+FORMAT_PROMPTS = {
+    "meeting_notes": """Analyze the following transcript and return a clear, structured summary.
 
 Format your response exactly like this:
 
@@ -38,10 +19,58 @@ KEY POINTS:
 
 ACTION ITEMS:
 - [action item 1]
-- [action item 2]
+- [action item 2]""",
 
-TRANSCRIPT:
-{transcript}"""
+    "email_draft": """Convert the following transcript into a professional email draft.
+Include a subject line, greeting, body with key points, and a professional closing.
+Keep it concise and actionable.""",
+
+    "todo_list": """Extract all tasks, action items, and to-dos from the following transcript.
+Format as a numbered checklist:
+
+1. [ ] Task description
+2. [ ] Task description
+...""",
+
+    "key_decisions": """Identify and summarize all key decisions made in this transcript.
+
+Format your response as:
+
+DECISIONS MADE:
+- [decision 1]: [brief context]
+- [decision 2]: [brief context]
+
+PENDING DECISIONS:
+- [item needing decision]: [context]
+
+NEXT STEPS:
+- [step 1]
+- [step 2]""",
+}
+
+
+async def summarize_transcript(transcript: str, format_type: str = "meeting_notes") -> str:
+    """
+    Summarize transcript using Groq (Llama 3).
+
+    Args:
+        transcript: Full transcript text
+        format_type: One of meeting_notes, email_draft, todo_list, key_decisions
+    """
+    try:
+        prompt = FORMAT_PROMPTS.get(format_type, FORMAT_PROMPTS["meeting_notes"])
+
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            max_tokens=1024,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant that summarizes meeting transcripts. Be concise and well-structured."
+                },
+                {
+                    "role": "user",
+                    "content": f"{prompt}\n\nTRANSCRIPT:\n{transcript}"
                 }
             ]
         )
