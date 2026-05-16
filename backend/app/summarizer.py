@@ -48,6 +48,16 @@ NEXT STEPS:
 - [step 2]""",
 }
 
+# ── Language names for translation ──
+LANGUAGE_NAMES = {
+    "en": "English", "es": "Spanish", "fr": "French", "de": "German",
+    "it": "Italian", "pt": "Portuguese", "zh": "Chinese", "ja": "Japanese",
+    "ko": "Korean", "ar": "Arabic", "hi": "Hindi", "ru": "Russian",
+    "am": "Amharic", "tr": "Turkish", "nl": "Dutch", "pl": "Polish",
+    "sv": "Swedish", "da": "Danish", "fi": "Finnish", "uk": "Ukrainian",
+    "th": "Thai", "vi": "Vietnamese", "id": "Indonesian",
+}
+
 
 async def summarize_transcript(transcript: str, format_type: str = "meeting_notes") -> str:
     """
@@ -78,3 +88,33 @@ async def summarize_transcript(transcript: str, format_type: str = "meeting_note
     except Exception as e:
         logger.error(f"Summarization error: {e}")
         return "Summary could not be generated. Please check your API key."
+
+
+async def translate_text(text: str, target_language: str) -> str:
+    """
+    Translate text to a target language using Groq (Llama 3).
+
+    Args:
+        text: Text to translate
+        target_language: Language code (e.g. 'es', 'fr', 'am')
+    """
+    lang_name = LANGUAGE_NAMES.get(target_language, target_language)
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            max_tokens=2048,
+            messages=[
+                {
+                    "role": "system",
+                    "content": f"You are a professional translator. Translate the following text accurately into {lang_name}. Only output the translated text, no explanations."
+                },
+                {
+                    "role": "user",
+                    "content": text
+                }
+            ]
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        logger.error(f"Translation error: {e}")
+        return f"Translation to {lang_name} failed. Please check your API key."

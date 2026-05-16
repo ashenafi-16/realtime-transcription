@@ -11,6 +11,8 @@ class Session(Base):
     title = Column(String(255), default="Untitled Session")
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     duration = Column(Integer, default=0)  # seconds
+    language = Column(String(10), default="")  # e.g. 'en', 'am'
+    tags = Column(Text, default="")  # comma-separated tags
 
     chunks = relationship("TranscriptChunk", back_populates="session", cascade="all, delete-orphan", order_by="TranscriptChunk.index")
     summary = relationship("Summary", back_populates="session", uselist=False, cascade="all, delete-orphan")
@@ -23,6 +25,7 @@ class TranscriptChunk(Base):
     session_id = Column(Integer, ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False)
     index = Column(Integer, nullable=False)
     text = Column(Text, nullable=False)
+    speaker = Column(String(50), default="")  # e.g. "Speaker 1"
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
 
     session = relationship("Session", back_populates="chunks")

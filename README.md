@@ -23,8 +23,14 @@ Record live audio or upload files → Whisper transcribes in 99+ languages → A
 | 📁 **File Upload** | Drag-and-drop audio/video files (MP3, WAV, M4A, MP4, etc.) for transcription |
 | 🌐 **24+ Languages** | Built-in language selector with auto-detection — English, Spanish, Amharic, Chinese, and more |
 | 🤖 **AI Summaries** | 4 formats: Meeting Notes, Email Draft, To-Do List, Key Decisions |
-| 📋 **Session History** | Browse, search, view, and delete past recordings with full transcripts |
-| 📊 **Analytics Dashboard** | Interactive charts: recordings/day, session duration, word frequency |
+| 🌍 **Real-Time Translation** | Translate transcripts to any of 23 languages using Groq/Llama AI |
+| 🔍 **Transcript Search** | Search within transcripts with real-time highlighting and match navigation |
+| 🏷️ **Session Tags** | Tag recordings (Meeting, Lecture, Interview, etc.) with preset + custom tags |
+| 🗣️ **Speaker Labels** | Manually assign color-coded speaker names to transcript chunks |
+| 📖 **Custom Vocabulary** | Add domain-specific hotwords to improve Whisper accuracy |
+| 📄 **PDF Export** | Download professional PDFs with metadata, transcript, and summary |
+| 📋 **Session History** | Browse, search, filter by tag, view, and delete past recordings |
+| 📊 **Analytics Dashboard** | Interactive charts: recordings/day, session duration, word frequency, tags pie chart |
 | 🌙 **Dark Mode** | Polished dark theme with warm neutral colors |
 | ⏸️ **Pause / Resume** | Pause recording without ending the session |
 | 🎵 **Audio Playback** | Replay recorded audio after stopping |
@@ -33,7 +39,7 @@ Record live audio or upload files → Whisper transcribes in 99+ languages → A
 | ⬇️ **Export** | Download as TXT or copy to clipboard |
 | ⌨️ **Keyboard Shortcuts** | `Space` = toggle recording, `Esc` = stop |
 | 🔄 **Re-summarize** | Change format and regenerate summary on demand |
-| ⚙️ **Settings** | Configure Whisper model, language, chunk interval, summary style |
+| ⚙️ **Settings** | Configure Whisper model, language, chunk interval, summary style, custom vocabulary |
 | 🐳 **Docker Ready** | One-command deployment with Docker Compose |
 | 🧪 **Tested** | Backend API tests with pytest + CI/CD pipeline |
 

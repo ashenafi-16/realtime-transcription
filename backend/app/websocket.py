@@ -23,10 +23,19 @@ async def transcribe_endpoint(websocket: WebSocket):
     language = params.get("language", "") or None
     model = params.get("model", "base")
     summary_format = params.get("format", "meeting_notes")
+    custom_vocab = params.get("vocabulary", "")
 
     full_transcript = []
     session_name = "Untitled Session"
+    session_tags = ""
+    session_language = language or ""
     elapsed_seconds = 0
+
+    # Build initial_prompt from custom vocabulary
+    initial_prompt = ""
+    if custom_vocab:
+        initial_prompt = custom_vocab.replace(",", ", ").strip()
+        logger.info(f"Custom vocabulary: {initial_prompt[:100]}")
 
     try:
         while True:
@@ -46,7 +55,7 @@ async def transcribe_endpoint(websocket: WebSocket):
                 try:
                     loop = asyncio.get_event_loop()
                     text = await loop.run_in_executor(
-                        None, transcribe_audio, tmp_path, language
+                        None, transcribe_audio, tmp_path, language, initial_prompt
                     )
 
                     if text.strip():
@@ -80,6 +89,8 @@ async def transcribe_endpoint(websocket: WebSocket):
                     command = cmd.get("command", "")
                     session_name = cmd.get("session_name", session_name)
                     summary_format = cmd.get("format", summary_format)
+                    session_tags = cmd.get("tags", session_tags)
+                    session_language = cmd.get("language", session_language)
                 except (json.JSONDecodeError, AttributeError):
                     command = raw  # backwards compat: plain "STOP"
 
@@ -106,7 +117,9 @@ async def transcribe_endpoint(websocket: WebSocket):
                                 async with async_session() as db:
                                     session = Session(
                                         title=session_name,
-                                        duration=len(full_transcript) * 4  # approx
+                                        duration=len(full_transcript) * 4,  # approx
+                                        language=session_language or "",
+                                        tags=session_tags if isinstance(session_tags, str) else ",".join(session_tags) if session_tags else "",
                                     )
                                     db.add(session)
                                     await db.flush()

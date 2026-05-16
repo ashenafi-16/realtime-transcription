@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useToast } from '../context/ToastContext';
 
 const API = 'http://localhost:8000/api';
 
@@ -6,12 +7,15 @@ export default function HistoryPage() {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [filterTag, setFilterTag] = useState('');
   const [selected, setSelected] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const toast = useToast();
 
   const fetchSessions = async () => {
     try {
-      const res = await fetch(`${API}/sessions`);
+      const url = filterTag ? `${API}/sessions?tag=${filterTag}` : `${API}/sessions`;
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
         setSessions(data);
@@ -23,7 +27,7 @@ export default function HistoryPage() {
     }
   };
 
-  useEffect(() => { fetchSessions(); }, []);
+  useEffect(() => { fetchSessions(); }, [filterTag]);
 
   const viewSession = async (id) => {
     setDetailLoading(true);
@@ -46,10 +50,22 @@ export default function HistoryPage() {
       await fetch(`${API}/sessions/${id}`, { method: 'DELETE' });
       setSessions(prev => prev.filter(s => s.id !== id));
       if (selected?.id === id) setSelected(null);
+      toast.success('Session deleted');
     } catch (err) {
       console.error('Failed to delete session:', err);
     }
   };
+
+  const downloadPdf = (id, title) => {
+    const link = document.createElement('a');
+    link.href = `${API}/export/pdf/${id}`;
+    link.download = `${(title || 'session').replace(/\s+/g, '_')}.pdf`;
+    link.click();
+    toast.info('Downloading PDF...');
+  };
+
+  // Get all unique tags from sessions
+  const allTags = [...new Set(sessions.flatMap(s => s.tags || []))].sort();
 
   const filtered = sessions.filter(s =>
     (s.title || '').toLowerCase().includes(search.toLowerCase())
@@ -64,15 +80,25 @@ export default function HistoryPage() {
         </p>
       </div>
 
-      {/* Search Bar */}
-      <div className="search-bar" style={{ marginBottom: '1rem' }}>
-        <span className="search-bar-icon">🔍</span>
-        <input
-          className="input"
-          placeholder="Search sessions..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
+      {/* Search + Tag Filter */}
+      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="search-bar" style={{ flex: 1, minWidth: 200, marginBottom: 0 }}>
+          <span className="search-bar-icon">🔍</span>
+          <input className="input" placeholder="Search sessions..."
+            value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+
+        {allTags.length > 0 && (
+          <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>🏷️</span>
+            <button className={`tag-filter-btn ${filterTag === '' ? 'active' : ''}`}
+              onClick={() => setFilterTag('')}>All</button>
+            {allTags.map(t => (
+              <button key={t} className={`tag-filter-btn ${filterTag === t ? 'active' : ''}`}
+                onClick={() => setFilterTag(t)}>{t}</button>
+            ))}
+          </div>
+        )}
       </div>
 
       {loading ? (
@@ -89,10 +115,11 @@ export default function HistoryPage() {
               <thead>
                 <tr>
                   <th>Title</th>
+                  <th>Tags</th>
                   <th>Date</th>
                   <th>Chunks</th>
                   <th>Duration</th>
-                  <th style={{ width: 120 }}>Actions</th>
+                  <th style={{ width: 160 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -100,6 +127,13 @@ export default function HistoryPage() {
                   <tr key={s.id}>
                     <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                       {s.title || 'Untitled Session'}
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+                        {(s.tags || []).map(t => (
+                          <span key={t} className="tag-chip-sm">{t}</span>
+                        ))}
+                      </div>
                     </td>
                     <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
                       {new Date(s.created_at).toLocaleDateString()} {new Date(s.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -110,11 +144,14 @@ export default function HistoryPage() {
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: '0.35rem' }}>
-                        <button className="btn btn-ghost btn-sm" onClick={() => viewSession(s.id)}>
+                        <button className="btn btn-ghost btn-sm" onClick={() => viewSession(s.id)} title="View">
                           👁️
                         </button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => downloadPdf(s.id, s.title)} title="PDF">
+                          📄
+                        </button>
                         <button className="btn btn-ghost btn-sm" onClick={() => deleteSession(s.id)}
-                          style={{ color: 'var(--danger)' }}>
+                          style={{ color: 'var(--danger)' }} title="Delete">
                           🗑️
                         </button>
                       </div>
@@ -140,8 +177,16 @@ export default function HistoryPage() {
               <div className="empty-state"><div className="spinner" /></div>
             ) : (
               <>
-                <div style={{ marginBottom: '1rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  {new Date(selected.created_at).toLocaleString()}
+                <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                    {new Date(selected.created_at).toLocaleString()}
+                  </span>
+                  {selected.language && (
+                    <span className="badge">{selected.language.toUpperCase()}</span>
+                  )}
+                  {(selected.tags || []).map(t => (
+                    <span key={t} className="tag-chip-sm">{t}</span>
+                  ))}
                 </div>
 
                 {/* Transcript */}
@@ -150,6 +195,7 @@ export default function HistoryPage() {
                   {selected.chunks && selected.chunks.length > 0 ? (
                     selected.chunks.map((c, i) => (
                       <p key={i} style={{ marginBottom: '0.5rem' }}>
+                        {c.speaker && <span style={{ color: 'var(--accent)', fontWeight: 700, fontSize: '0.8rem' }}>[{c.speaker}] </span>}
                         <span style={{ color: 'var(--accent)', fontWeight: 700, fontSize: '0.75rem' }}>{String(i + 1).padStart(2, '0')}</span>{' '}
                         {c.text}
                       </p>
@@ -163,6 +209,18 @@ export default function HistoryPage() {
                 <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>✨ Summary</h3>
                 <div style={{ background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-sm)', padding: '1rem', fontSize: '0.875rem', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
                   {selected.summary || <span style={{ color: 'var(--text-muted)' }}>No summary</span>}
+                </div>
+
+                {/* PDF Download */}
+                <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
+                  <button className="btn btn-primary btn-sm" onClick={() => downloadPdf(selected.id, selected.title)}>
+                    📄 Download PDF
+                  </button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => {
+                    const text = (selected.chunks || []).map(c => c.text).join('\n');
+                    navigator.clipboard.writeText(text);
+                    toast.success('Transcript copied');
+                  }}>📋 Copy Transcript</button>
                 </div>
               </>
             )}

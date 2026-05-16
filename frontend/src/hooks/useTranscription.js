@@ -49,7 +49,8 @@ export function useTranscription() {
       const settings = JSON.parse(localStorage.getItem('transcription-settings') || '{}');
       const lang = settings.language || '';
       const model = settings.whisperModel || 'base';
-      const url = `${DEFAULT_WS_URL}?language=${lang}&model=${model}&format=${summaryFormat}`;
+      const vocab = encodeURIComponent(settings.customVocabulary || '');
+      const url = `${DEFAULT_WS_URL}?language=${lang}&model=${model}&format=${summaryFormat}&vocabulary=${vocab}`;
 
       const ws = new WebSocket(url);
       wsRef.current = ws;
@@ -198,10 +199,12 @@ export function useTranscription() {
         if (originalOnStop) originalOnStop(e);
         setTimeout(() => {
           if (wsRef.current?.readyState === WebSocket.OPEN) {
+            const settings = JSON.parse(localStorage.getItem('transcription-settings') || '{}');
             const payload = JSON.stringify({
               command: "STOP",
               session_name: sessionName || `Session ${new Date().toLocaleString()}`,
               format: summaryFormat,
+              language: settings.language || '',
             });
             wsRef.current.send(payload);
           }
@@ -210,10 +213,12 @@ export function useTranscription() {
       recorderRef.current.stop();
     } else {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
+        const settings = JSON.parse(localStorage.getItem('transcription-settings') || '{}');
         const payload = JSON.stringify({
           command: "STOP",
           session_name: sessionName || `Session ${new Date().toLocaleString()}`,
           format: summaryFormat,
+          language: settings.language || '',
         });
         wsRef.current.send(payload);
       }

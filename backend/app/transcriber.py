@@ -22,7 +22,7 @@ def _get_model(model_name: str = "base"):
 _get_model("base")
 
 
-def transcribe_audio(file_path: str, language: str = None) -> str:
+def transcribe_audio(file_path: str, language: str = None, initial_prompt: str = "") -> str:
     """
     Takes a path to an audio file.
     Converts to 16kHz mono WAV via ffmpeg, then transcribes with Whisper.
@@ -30,6 +30,7 @@ def transcribe_audio(file_path: str, language: str = None) -> str:
     Args:
         file_path: Path to audio file
         language: Language code (e.g. 'en', 'es') or None for auto-detect
+        initial_prompt: Custom vocabulary / context to guide Whisper
     """
     wav_path = None
     try:
@@ -61,7 +62,8 @@ def transcribe_audio(file_path: str, language: str = None) -> str:
         kwargs = {"fp16": False}
         if language:
             kwargs["language"] = language
-        # If no language specified, Whisper will auto-detect
+        if initial_prompt:
+            kwargs["initial_prompt"] = initial_prompt
 
         transcription = model.transcribe(wav_path, **kwargs)
         text = transcription["text"]

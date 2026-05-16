@@ -13,3 +13,4 @@ slowapi
 httpx
 pytest
 pytest-asyncio
+fpdf2

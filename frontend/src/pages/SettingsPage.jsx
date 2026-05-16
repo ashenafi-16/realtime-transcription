@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
 
@@ -25,6 +25,7 @@ const LANGUAGES = [
   { value: 'hi', label: 'Hindi' },
   { value: 'ru', label: 'Russian' },
   { value: 'am', label: 'Amharic' },
+  { value: 'tr', label: 'Turkish' },
 ];
 
 const SUMMARY_STYLES = [
@@ -39,6 +40,7 @@ const DEFAULT_SETTINGS = {
   language: '',
   chunkInterval: 4000,
   summaryStyle: 'meeting_notes',
+  customVocabulary: '',
 };
 
 export default function SettingsPage() {
@@ -151,10 +153,7 @@ export default function SettingsPage() {
             <div className="setting-control">
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <input
-                  type="range"
-                  min={2000}
-                  max={10000}
-                  step={1000}
+                  type="range" min={2000} max={10000} step={1000}
                   value={settings.chunkInterval}
                   onChange={e => updateSetting('chunkInterval', parseInt(e.target.value))}
                   style={{ flex: 1 }}
@@ -167,12 +166,38 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        {/* Custom Vocabulary */}
+        <div className="card">
+          <div className="card-header">
+            <span className="card-title">📖 Custom Vocabulary</span>
+          </div>
+          <div className="setting-row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+            <div className="setting-label" style={{ marginBottom: '0.5rem' }}>
+              <strong>Hotwords & Special Terms</strong>
+              <span>
+                Add domain-specific words, product names, or jargon to improve transcription accuracy.
+                Separate words with commas.
+              </span>
+            </div>
+            <textarea
+              className="input"
+              rows={4}
+              placeholder="e.g., VoiceScribe, FastAPI, Kubernetes, GPT-4, Llama 3, sprint backlog..."
+              value={settings.customVocabulary}
+              onChange={e => updateSetting('customVocabulary', e.target.value)}
+              style={{ resize: 'vertical', fontFamily: 'var(--font-sans)', fontSize: '0.85rem', lineHeight: 1.6 }}
+            />
+            <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
+              These words are passed to Whisper as context to help it recognize uncommon terms.
+            </p>
+          </div>
+        </div>
+
         {/* Summary */}
         <div className="card">
           <div className="card-header">
             <span className="card-title">✨ Summary</span>
           </div>
-
           <div className="setting-row">
             <div className="setting-label">
               <strong>Default Summary Style</strong>

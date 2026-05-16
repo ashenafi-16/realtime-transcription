@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
-  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Cell
+  BarChart, Bar, LineChart, Line, PieChart, Pie,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend
 } from 'recharts';
 
 const API = 'http://localhost:8000/api';
@@ -125,8 +125,40 @@ export default function AnalyticsPage() {
           )}
         </div>
 
+        {/* Tags Breakdown — Pie Chart */}
+        <div className="chart-card">
+          <h3>🏷️ Sessions by Tag</h3>
+          {stats.tags_breakdown && stats.tags_breakdown.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie
+                  data={stats.tags_breakdown}
+                  dataKey="count"
+                  nameKey="tag"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={90}
+                  innerRadius={45}
+                  paddingAngle={3}
+                  label={({ tag, count }) => `${tag} (${count})`}
+                  labelLine={{ stroke: 'var(--text-muted)', strokeWidth: 1 }}
+                >
+                  {stats.tags_breakdown.map((entry, index) => (
+                    <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 8, fontSize: '0.85rem' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="empty-state"><p>No tags yet — add tags to your recordings</p></div>
+          )}
+        </div>
+
         {/* Top Words */}
-        <div className="chart-card" style={{ gridColumn: '1 / -1' }}>
+        <div className="chart-card">
           <h3>💬 Most Common Words</h3>
           {stats.top_words && stats.top_words.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
