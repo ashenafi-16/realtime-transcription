@@ -13,20 +13,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.models import Session, TranscriptChunk, Summary
+from app.models import Session, TranscriptChunk, Summary, User
 from app.transcriber import transcribe_audio
 from app.summarizer import summarize_transcript, translate_text
+from app.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api")
 
 
-# ──────────────────────── Sessions CRUD ────────────────────────
 
 @router.get("/sessions")
-async def list_sessions(tag: str = "", db: AsyncSession = Depends(get_db)):
+async def list_sessions(
+    tag: str = "",
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     result = await db.execute(
-        select(Session).order_by(Session.created_at.desc())
+        select(Session)
+        .where(Session.user_id == user.id)
+        .order_by(Session.created_at.desc())
     )
     sessions = result.scalars().all()
     out = []
@@ -54,11 +60,15 @@ async def list_sessions(tag: str = "", db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/sessions/{session_id}")
-async def get_session(session_id: int, db: AsyncSession = Depends(get_db)):
+async def get_session(
+    session_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     result = await db.execute(
         select(Session)
         .options(selectinload(Session.chunks), selectinload(Session.summary))
-        .where(Session.id == session_id)
+        .where(Session.id == session_id, Session.user_id == user.id)
     )
     session = result.scalars().first()
     if not session:
@@ -77,8 +87,15 @@ async def get_session(session_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.put("/sessions/{session_id}")
-async def update_session(session_id: int, body: dict, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Session).where(Session.id == session_id))
+async def update_session(
+    session_id: int,
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(Session).where(Session.id == session_id, Session.user_id == user.id)
+    )
     session = result.scalars().first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -100,8 +117,14 @@ async def update_session(session_id: int, body: dict, db: AsyncSession = Depends
 
 
 @router.delete("/sessions/{session_id}")
-async def delete_session(session_id: int, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Session).where(Session.id == session_id))
+async def delete_session(
+    session_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(Session).where(Session.id == session_id, Session.user_id == user.id)
+    )
     session = result.scalars().first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -111,11 +134,23 @@ async def delete_session(session_id: int, db: AsyncSession = Depends(get_db)):
     return {"status": "deleted"}
 
 
-# ──────────────────────── Speaker Labels ────────────────────────
 
 @router.put("/sessions/{session_id}/chunks/{chunk_index}/speaker")
-async def update_chunk_speaker(session_id: int, chunk_index: int, body: dict, db: AsyncSession = Depends(get_db)):
+async def update_chunk_speaker(
+    session_id: int,
+    chunk_index: int,
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     """Update the speaker label for a specific transcript chunk."""
+    # Verify user owns this session
+    sess_check = await db.execute(
+        select(Session.id).where(Session.id == session_id, Session.user_id == user.id)
+    )
+    if not sess_check.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Session not found")
+
     result = await db.execute(
         select(TranscriptChunk)
         .where(TranscriptChunk.session_id == session_id, TranscriptChunk.index == chunk_index)
@@ -129,10 +164,13 @@ async def update_chunk_speaker(session_id: int, chunk_index: int, body: dict, db
     return {"status": "updated", "speaker": chunk.speaker}
 
 
-# ──────────────────────── File Upload Transcription ────────────────────────
 
 @router.post("/transcribe-file")
-async def transcribe_file(file: UploadFile = File(...), language: str = ""):
+async def transcribe_file(
+    file: UploadFile = File(...),
+    language: str = "",
+    user: User = Depends(get_current_user),
+):
     """Upload an audio/video file and get it transcribed."""
     allowed_types = {'audio/', 'video/'}
     content_type = file.content_type or ''
@@ -157,10 +195,12 @@ async def transcribe_file(file: UploadFile = File(...), language: str = ""):
             os.unlink(tmp_path)
 
 
-# ──────────────────────── Translation ────────────────────────
 
 @router.post("/translate")
-async def translate_endpoint(body: dict):
+async def translate_endpoint(
+    body: dict,
+    user: User = Depends(get_current_user),
+):
     """Translate text to a target language using AI."""
     text = body.get("text", "")
     target = body.get("target_language", "")
@@ -173,10 +213,12 @@ async def translate_endpoint(body: dict):
     return {"translated_text": result, "target_language": target}
 
 
-# ──────────────────────── Re-summarize ────────────────────────
 
 @router.post("/resummarize")
-async def resummarize(body: dict):
+async def resummarize(
+    body: dict,
+    user: User = Depends(get_current_user),
+):
     transcript_text = body.get("transcript", "")
     fmt = body.get("format", "meeting_notes")
     if not transcript_text.strip():
@@ -186,17 +228,20 @@ async def resummarize(body: dict):
     return {"summary": summary}
 
 
-# ──────────────────────── PDF Export ────────────────────────
 
 @router.get("/export/pdf/{session_id}")
-async def export_pdf(session_id: int, db: AsyncSession = Depends(get_db)):
+async def export_pdf(
+    session_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     """Generate a professional PDF of a session's transcript and summary."""
     from fpdf import FPDF
 
     result = await db.execute(
         select(Session)
         .options(selectinload(Session.chunks), selectinload(Session.summary))
-        .where(Session.id == session_id)
+        .where(Session.id == session_id, Session.user_id == user.id)
     )
     session = result.scalars().first()
     if not session:
@@ -251,9 +296,7 @@ async def export_pdf(session_id: int, db: AsyncSession = Depends(get_db)):
 
             pdf.set_font("Helvetica", "", 10)
             pdf.set_text_color(40, 40, 60)
-            # Use multi_cell for wrapping
             text = chunk.text or ""
-            # Handle encoding — remove non-latin1 chars for basic FPDF
             safe_text = text.encode('latin-1', errors='replace').decode('latin-1')
             pdf.multi_cell(0, 6, safe_text)
             pdf.ln(2)
@@ -301,21 +344,35 @@ async def export_pdf(session_id: int, db: AsyncSession = Depends(get_db)):
 # ──────────────────────── Analytics ────────────────────────
 
 @router.get("/analytics")
-async def get_analytics(db: AsyncSession = Depends(get_db)):
-    total_result = await db.execute(select(func.count(Session.id)))
+async def get_analytics(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    total_result = await db.execute(
+        select(func.count(Session.id)).where(Session.user_id == user.id)
+    )
     total_sessions = total_result.scalar() or 0
 
-    total_chunks_result = await db.execute(select(func.count(TranscriptChunk.id)))
+    total_chunks_result = await db.execute(
+        select(func.count(TranscriptChunk.id))
+        .join(Session, TranscriptChunk.session_id == Session.id)
+        .where(Session.user_id == user.id)
+    )
     total_chunks = total_chunks_result.scalar() or 0
 
-    dur_result = await db.execute(select(func.sum(Session.duration), func.avg(Session.duration)))
+    dur_result = await db.execute(
+        select(func.sum(Session.duration), func.avg(Session.duration))
+        .where(Session.user_id == user.id)
+    )
     row = dur_result.first()
     total_seconds = row[0] or 0
     avg_duration = round(row[1] or 0)
     total_minutes = round(total_seconds / 60)
 
     sessions_result = await db.execute(
-        select(Session.created_at, Session.duration).order_by(Session.created_at)
+        select(Session.created_at, Session.duration)
+        .where(Session.user_id == user.id)
+        .order_by(Session.created_at)
     )
     all_sessions = sessions_result.all()
 
@@ -330,7 +387,11 @@ async def get_analytics(db: AsyncSession = Depends(get_db)):
     recordings_per_day = [{"date": d, "count": c} for d, c in day_counts.items()]
 
     # Top words
-    chunks_result = await db.execute(select(TranscriptChunk.text))
+    chunks_result = await db.execute(
+        select(TranscriptChunk.text)
+        .join(Session, TranscriptChunk.session_id == Session.id)
+        .where(Session.user_id == user.id)
+    )
     all_text = " ".join([r[0] for r in chunks_result.all() if r[0]])
 
     stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
@@ -349,7 +410,9 @@ async def get_analytics(db: AsyncSession = Depends(get_db)):
     top_words = [{"word": w, "count": c} for w, c in word_counts]
 
     # Tags breakdown
-    tags_result = await db.execute(select(Session.tags))
+    tags_result = await db.execute(
+        select(Session.tags).where(Session.user_id == user.id)
+    )
     all_tags_raw = tags_result.all()
     tag_counter = Counter()
     for (raw,) in all_tags_raw:

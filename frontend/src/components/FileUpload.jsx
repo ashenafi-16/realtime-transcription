@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useToast } from '../context/ToastContext';
+import { authFetch } from '../utils/authFetch';
 
 const API = 'http://localhost:8000/api';
 
@@ -69,8 +70,10 @@ export default function FileUpload({ language, onTranscriptResult }) {
         ? `${API}/transcribe-file?language=${language}`
         : `${API}/transcribe-file`;
 
+      const token = localStorage.getItem('voicescribe-token') || '';
       const res = await fetch(url, {
         method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
 

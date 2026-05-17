@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useTranscription } from '../hooks/useTranscription';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useToast } from '../context/ToastContext';
+import { authFetch } from '../utils/authFetch';
 import WaveformVisualizer from '../components/WaveformVisualizer';
 import AudioPlayer from '../components/AudioPlayer';
 import ExportButtons from '../components/ExportButtons';
@@ -176,7 +177,7 @@ export default function DashboardPage() {
     if (!fullText.trim()) { toast.error('No transcript to translate'); return; }
     setTranslating(true);
     try {
-      const res = await fetch('http://localhost:8000/api/translate', {
+      const res = await authFetch('http://localhost:8000/api/translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: fullText, target_language: translateLang }),
@@ -194,7 +195,7 @@ export default function DashboardPage() {
   const summarizeUpload = async () => {
     if (!uploadTranscript.trim()) { toast.error('No transcript to summarize'); return; }
     try {
-      const res = await fetch('http://localhost:8000/api/resummarize', {
+      const res = await authFetch('http://localhost:8000/api/resummarize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ transcript: uploadTranscript, format: summaryFormat }),

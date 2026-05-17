@@ -4,6 +4,18 @@ from sqlalchemy.orm import relationship
 from app.database import Base
 
 
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    hashed_password = Column(String(255), nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    sessions = relationship("Session", back_populates="owner", cascade="all, delete-orphan")
+
+
 class Session(Base):
     __tablename__ = "sessions"
 
@@ -13,7 +25,9 @@ class Session(Base):
     duration = Column(Integer, default=0)  # seconds
     language = Column(String(10), default="")  # e.g. 'en', 'am'
     tags = Column(Text, default="")  # comma-separated tags
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
 
+    owner = relationship("User", back_populates="sessions")
     chunks = relationship("TranscriptChunk", back_populates="session", cascade="all, delete-orphan", order_by="TranscriptChunk.index")
     summary = relationship("Summary", back_populates="session", uselist=False, cascade="all, delete-orphan")
 

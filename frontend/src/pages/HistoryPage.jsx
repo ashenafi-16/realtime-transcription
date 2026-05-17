@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useToast } from '../context/ToastContext';
+import { authFetch } from '../utils/authFetch';
 
 const API = 'http://localhost:8000/api';
 
@@ -15,7 +16,7 @@ export default function HistoryPage() {
   const fetchSessions = async () => {
     try {
       const url = filterTag ? `${API}/sessions?tag=${filterTag}` : `${API}/sessions`;
-      const res = await fetch(url);
+      const res = await authFetch(url);
       if (res.ok) {
         const data = await res.json();
         setSessions(data);
@@ -32,7 +33,7 @@ export default function HistoryPage() {
   const viewSession = async (id) => {
     setDetailLoading(true);
     try {
-      const res = await fetch(`${API}/sessions/${id}`);
+      const res = await authFetch(`${API}/sessions/${id}`);
       if (res.ok) {
         const data = await res.json();
         setSelected(data);
@@ -47,7 +48,7 @@ export default function HistoryPage() {
   const deleteSession = async (id) => {
     if (!confirm('Delete this session?')) return;
     try {
-      await fetch(`${API}/sessions/${id}`, { method: 'DELETE' });
+      await authFetch(`${API}/sessions/${id}`, { method: 'DELETE' });
       setSessions(prev => prev.filter(s => s.id !== id));
       if (selected?.id === id) setSelected(null);
       toast.success('Session deleted');
@@ -56,12 +57,24 @@ export default function HistoryPage() {
     }
   };
 
-  const downloadPdf = (id, title) => {
-    const link = document.createElement('a');
-    link.href = `${API}/export/pdf/${id}`;
-    link.download = `${(title || 'session').replace(/\s+/g, '_')}.pdf`;
-    link.click();
-    toast.info('Downloading PDF...');
+  const downloadPdf = async (id, title) => {
+    try {
+      const token = localStorage.getItem('voicescribe-token') || '';
+      const res = await fetch(`${API}/export/pdf/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Failed to download');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${(title || 'session').replace(/\s+/g, '_')}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.info('Downloading PDF...');
+    } catch (err) {
+      toast.error('PDF download failed');
+    }
   };
 
   // Get all unique tags from sessions

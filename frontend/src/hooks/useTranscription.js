@@ -50,7 +50,8 @@ export function useTranscription() {
       const lang = settings.language || '';
       const model = settings.whisperModel || 'base';
       const vocab = encodeURIComponent(settings.customVocabulary || '');
-      const url = `${DEFAULT_WS_URL}?language=${lang}&model=${model}&format=${summaryFormat}&vocabulary=${vocab}`;
+      const token = localStorage.getItem('voicescribe-token') || '';
+      const url = `${DEFAULT_WS_URL}?language=${lang}&model=${model}&format=${summaryFormat}&vocabulary=${vocab}&token=${token}`;
 
       const ws = new WebSocket(url);
       wsRef.current = ws;

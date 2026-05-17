@@ -8,6 +8,7 @@ from app.transcriber import transcribe_audio
 from app.summarizer import summarize_transcript
 from app.database import async_session
 from app.models import Session, TranscriptChunk, Summary
+from app.auth import decode_token
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -24,6 +25,26 @@ async def transcribe_endpoint(websocket: WebSocket):
     model = params.get("model", "base")
     summary_format = params.get("format", "meeting_notes")
     custom_vocab = params.get("vocabulary", "")
+
+    # Authenticate via token query param
+    token = params.get("token", "")
+    user_id = None
+    if token:
+        try:
+            payload = decode_token(token)
+            user_id = int(payload["sub"])
+            logger.info(f"Authenticated WebSocket user_id={user_id}")
+        except Exception as e:
+            logger.warning(f"WebSocket auth failed: {e}")
+            await websocket.send_json({"type": "error", "code": "AUTH_FAILED", "message": "Invalid token"})
+            await websocket.close(code=4001)
+            return
+
+    if not user_id:
+        logger.warning("WebSocket connection without auth token")
+        await websocket.send_json({"type": "error", "code": "AUTH_REQUIRED", "message": "Authentication required"})
+        await websocket.close(code=4001)
+        return
 
     full_transcript = []
     session_name = "Untitled Session"
@@ -112,7 +133,7 @@ async def transcribe_endpoint(websocket: WebSocket):
                             })
                             logger.info("Summary sent")
 
-                            # Save to database
+                            # Save to database with user_id
                             try:
                                 async with async_session() as db:
                                     session = Session(
@@ -120,6 +141,7 @@ async def transcribe_endpoint(websocket: WebSocket):
                                         duration=len(full_transcript) * 4,  # approx
                                         language=session_language or "",
                                         tags=session_tags if isinstance(session_tags, str) else ",".join(session_tags) if session_tags else "",
+                                        user_id=user_id,
                                     )
                                     db.add(session)
                                     await db.flush()
@@ -137,7 +159,7 @@ async def transcribe_endpoint(websocket: WebSocket):
                                     ))
 
                                     await db.commit()
-                                    logger.info(f"Session saved: id={session.id}")
+                                    logger.info(f"Session saved: id={session.id}, user_id={user_id}")
 
                                     await websocket.send_json({
                                         "type": "session_saved",

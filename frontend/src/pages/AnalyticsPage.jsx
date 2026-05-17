@@ -3,6 +3,7 @@ import {
   BarChart, Bar, LineChart, Line, PieChart, Pie,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend
 } from 'recharts';
+import { authFetch } from '../utils/authFetch';
 
 const API = 'http://localhost:8000/api';
 
@@ -13,7 +14,7 @@ export default function AnalyticsPage() {
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
-        const res = await fetch(`${API}/analytics`);
+        const res = await authFetch(`${API}/analytics`);
         if (res.ok) {
           const data = await res.json();
           setStats(data);

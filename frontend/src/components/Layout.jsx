@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 
 const NAV_ITEMS = [
   { path: '/', icon: '🏠', label: 'Home' },
@@ -12,8 +13,15 @@ const NAV_ITEMS = [
 
 export default function Layout({ children }) {
   const { theme, toggleTheme } = useTheme();
+  const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <>
@@ -60,6 +68,24 @@ export default function Layout({ children }) {
         </nav>
 
         <div className="sidebar-footer">
+          {user && (
+            <div className="sidebar-user">
+              <div className="sidebar-user-avatar">
+                {user.name ? user.name.charAt(0).toUpperCase() : '?'}
+              </div>
+              <div className="sidebar-user-info">
+                <span className="sidebar-user-name">{user.name}</span>
+                <span className="sidebar-user-email">{user.email}</span>
+              </div>
+              <button
+                className="sidebar-logout-btn"
+                onClick={handleLogout}
+                title="Sign out"
+              >
+                🚪
+              </button>
+            </div>
+          )}
           <button className="theme-toggle" onClick={toggleTheme}>
             <span className="sidebar-link-icon">
               {theme === 'light' ? '🌙' : '☀️'}

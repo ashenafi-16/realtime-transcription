@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
+import { authFetch } from '../utils/authFetch';
 
 const WHISPER_MODELS = [
   { value: 'tiny', label: 'Tiny (fastest, least accurate)' },
@@ -66,7 +67,7 @@ export default function SettingsPage() {
 
   const saveToServer = async () => {
     try {
-      await fetch('http://localhost:8000/api/settings', {
+      await authFetch('http://localhost:8000/api/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings),

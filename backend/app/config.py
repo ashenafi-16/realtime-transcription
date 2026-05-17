@@ -10,6 +10,8 @@ class Settings:
     LANGUAGE: str = os.getenv("LANGUAGE", "")  # empty = auto-detect
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./transcriptions.db")
     MAX_UPLOAD_SIZE: int = int(os.getenv("MAX_UPLOAD_SIZE", 50 * 1024 * 1024))  # 50MB
+    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "change-me-in-production")
+    JWT_ALGORITHM: str = "HS256"
 
 
 settings = Settings()

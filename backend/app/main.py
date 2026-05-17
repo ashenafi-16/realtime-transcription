@@ -8,6 +8,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.websocket import router as ws_router
 from app.routes import router as api_router
+from app.auth_routes import router as auth_router
 from app.database import init_db
 
 # Configure logging
@@ -40,6 +41,7 @@ app.add_middleware(
 )
 
 # Register routers
+app.include_router(auth_router)
 app.include_router(ws_router)
 app.include_router(api_router)
 
