@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 
-# ── Password hashing (direct bcrypt — avoids passlib Python 3.13 issues) ──
+# Password hashing (direct bcrypt — avoids passlib Python 3.13 issues) 
 
 def hash_password(password: str) -> str:
     salt = bcrypt.gensalt()

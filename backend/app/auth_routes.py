@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
-# ── Request / Response schemas ────────────────────────────────
 class RegisterRequest(BaseModel):
     name: str
     email: EmailStr
@@ -35,7 +34,6 @@ class UserResponse(BaseModel):
     email: str
 
 
-# ── Endpoints ─────────────────────────────────────────────────
 
 @router.post("/register", response_model=AuthResponse)
 async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):

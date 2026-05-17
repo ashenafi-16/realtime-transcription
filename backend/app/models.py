@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, Float, ForeignKey
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -25,6 +25,7 @@ class Session(Base):
     duration = Column(Integer, default=0)  # seconds
     language = Column(String(10), default="")  # e.g. 'en', 'am'
     tags = Column(Text, default="")  # comma-separated tags
+    share_token = Column(String(64), unique=True, nullable=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
 
     owner = relationship("User", back_populates="sessions")
@@ -40,6 +41,7 @@ class TranscriptChunk(Base):
     index = Column(Integer, nullable=False)
     text = Column(Text, nullable=False)
     speaker = Column(String(50), default="")  # e.g. "Speaker 1"
+    start_time = Column(Float, default=0.0)  # seconds from session start
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
 
     session = relationship("Session", back_populates="chunks")
@@ -53,3 +55,37 @@ class Summary(Base):
     text = Column(Text, nullable=False)
 
     session = relationship("Session", back_populates="summary")
+
+
+class UserSettings(Base):
+    __tablename__ = "user_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True)
+    slack_webhook_url = Column(String(500), default="")
+
+    owner = relationship("User", backref="settings_obj")
+
+
+class SavedEmail(Base):
+    __tablename__ = "saved_emails"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    email = Column(String(255), nullable=False)
+
+    owner = relationship("User", backref="saved_emails")
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(Integer, ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    role = Column(String(20), nullable=False)  # "user" or "assistant"
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    session = relationship("Session", backref="chat_messages")
+    owner = relationship("User", backref="chat_messages")

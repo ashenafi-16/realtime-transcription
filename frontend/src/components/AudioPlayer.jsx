@@ -6,8 +6,9 @@ function formatTime(s) {
   return `${m}:${String(sec).padStart(2, '0')}`;
 }
 
-export default function AudioPlayer({ audioUrl }) {
-  const audioRef = useRef(null);
+export default function AudioPlayer({ audioUrl, externalRef }) {
+  const internalRef = useRef(null);
+  const audioRef = externalRef || internalRef;
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);

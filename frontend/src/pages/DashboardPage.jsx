@@ -9,6 +9,7 @@ import ExportButtons from '../components/ExportButtons';
 import ProgressSteps from '../components/ProgressSteps';
 import FileUpload from '../components/FileUpload';
 import TranscriptSearch from '../components/TranscriptSearch';
+import ShareSummary from '../components/ShareSummary';
 
 const SUMMARY_FORMATS = [
   { key: 'meeting_notes', label: '📝 Meeting Notes' },
@@ -79,7 +80,7 @@ export default function DashboardPage() {
     sessionName, setSessionName, summaryFormat, setSummaryFormat,
     audioUrl, elapsedTime, streamingText, stream,
     startRecording, pauseRecording, resumeRecording, stopRecording,
-    updateTranscriptChunk, resummarize,
+    updateTranscriptChunk, resummarize, seekAudio, audioRef,
   } = useTranscription();
 
   const toast = useToast();
@@ -173,7 +174,7 @@ export default function DashboardPage() {
   // Translation
   const handleTranslate = async () => {
     if (!translateLang) { toast.error('Select a target language'); return; }
-    const fullText = transcript.join('\n');
+    const fullText = transcript.map(c => typeof c === 'object' ? c.text : c).join('\n');
     if (!fullText.trim()) { toast.error('No transcript to translate'); return; }
     setTranslating(true);
     try {
@@ -323,7 +324,7 @@ export default function DashboardPage() {
               </span>
             </div>
 
-            {audioUrl && <div style={{ marginTop: '1rem' }}><AudioPlayer audioUrl={audioUrl} /></div>}
+            {audioUrl && <div style={{ marginTop: '1rem' }}><AudioPlayer audioUrl={audioUrl} externalRef={audioRef} /></div>}
             <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               ⌨️ Space = Start/Stop &nbsp;|&nbsp; Esc = Stop
             </div>
@@ -357,9 +358,19 @@ export default function DashboardPage() {
 
                         {/* Speaker Label */}
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.15rem', minWidth: 28 }}>
-                          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--accent)', marginTop: 3 }}>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--accent)', marginTop: 3 }}>
                             {String(i + 1).padStart(2, '0')}
                           </span>
+                          {/* Clickable timestamp */}
+                          {(typeof chunk === 'object' && chunk.start_time > 0 && audioUrl) && (
+                            <button
+                              className="timestamp-btn"
+                              onClick={(e) => { e.stopPropagation(); seekAudio(chunk.start_time); }}
+                              title={`Jump to ${Math.floor((chunk.start_time || 0) / 60)}:${String(Math.floor((chunk.start_time || 0) % 60)).padStart(2, '0')}`}
+                            >
+                              ⏱ {Math.floor((chunk.start_time || 0) / 60)}:{String(Math.floor((chunk.start_time || 0) % 60)).padStart(2, '0')}
+                            </button>
+                          )}
                           <button
                             className="speaker-badge"
                             style={{ color: getSpeakerColor(speakers[i]), borderColor: getSpeakerColor(speakers[i]) }}
@@ -396,9 +407,9 @@ export default function DashboardPage() {
                           </div>
                         ) : (
                           <p style={{ flex: 1, fontSize: '0.9rem', color: 'var(--text-primary)', margin: 0, lineHeight: 1.6, cursor: 'pointer' }}
-                            onClick={() => { setEditingIdx(i); setEditText(chunk); }} title="Click to edit">
+                            onClick={() => { setEditingIdx(i); setEditText(typeof chunk === 'object' ? chunk.text : chunk); }} title="Click to edit">
                             {speakers[i] && <span className="speaker-name" style={{ color: getSpeakerColor(speakers[i]) }}>{speakers[i]}: </span>}
-                            {highlightText(chunk, i)}
+                            {highlightText(typeof chunk === 'object' ? chunk.text : chunk, i)}
                           </p>
                         )}
                       </div>
@@ -524,10 +535,13 @@ export default function DashboardPage() {
                   )}
 
                   {status === 'done' && (
-                    <button className="btn btn-ghost btn-sm" style={{ marginTop: '0.75rem' }}
-                      onClick={() => resummarize(summaryFormat)}>
-                      🔄 Re-summarize
-                    </button>
+                    <>
+                      <button className="btn btn-ghost btn-sm" style={{ marginTop: '0.75rem' }}
+                        onClick={() => resummarize(summaryFormat)}>
+                        🔄 Re-summarize
+                      </button>
+                      <ShareSummary summary={displaySummary} sessionTitle={sessionName} />
+                    </>
                   )}
                 </div>
               )}
@@ -576,6 +590,7 @@ export default function DashboardPage() {
                   ))}
                 </div>
                 <button className="btn btn-primary btn-sm" onClick={summarizeUpload}>✨ Generate Summary</button>
+                {uploadTranscript && <ShareSummary summary={uploadTranscript} sessionTitle="File Upload" />}
               </div>
             </div>
           )}

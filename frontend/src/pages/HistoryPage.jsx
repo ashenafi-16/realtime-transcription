@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useToast } from '../context/ToastContext';
 import { authFetch } from '../utils/authFetch';
+import TranscriptChat from '../components/chat/TranscriptChat';
 
 const API = 'http://localhost:8000/api';
 
@@ -59,22 +60,36 @@ export default function HistoryPage() {
 
   const downloadPdf = async (id, title) => {
     try {
-      const token = localStorage.getItem('voicescribe-token') || '';
-      const res = await fetch(`${API}/export/pdf/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Failed to download');
+      const res = await authFetch(`${API}/export/pdf/${id}`);
+      if (!res.ok) throw new Error();
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${(title || 'session').replace(/\s+/g, '_')}.pdf`;
-      link.click();
+      const a = document.createElement('a'); a.href = url;
+      a.download = `${title || 'session'}.pdf`; a.click();
       URL.revokeObjectURL(url);
-      toast.info('Downloading PDF...');
-    } catch (err) {
-      toast.error('PDF download failed');
-    }
+      toast.success('PDF downloaded!');
+    } catch { toast.error('PDF export failed'); }
+  };
+
+  const shareSession = async (id) => {
+    try {
+      const res = await authFetch(`${API}/sessions/${id}/share`, { method: 'POST' });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      const link = `${window.location.origin}/share/${data.share_token}`;
+      await navigator.clipboard.writeText(link);
+      toast.success('Share link copied to clipboard!');
+      fetchSessions();
+    } catch { toast.error('Failed to create share link'); }
+  };
+
+  const unshareSession = async (id) => {
+    try {
+      const res = await authFetch(`${API}/sessions/${id}/share`, { method: 'DELETE' });
+      if (!res.ok) throw new Error();
+      toast.success('Share link revoked');
+      fetchSessions();
+    } catch { toast.error('Failed to revoke share link'); }
   };
 
   // Get all unique tags from sessions
@@ -160,6 +175,23 @@ export default function HistoryPage() {
                         <button className="btn btn-ghost btn-sm" onClick={() => viewSession(s.id)} title="View">
                           👁️
                         </button>
+                        {s.share_token ? (
+                          <>
+                            <button className="btn btn-ghost btn-sm" title="Copy share link"
+                              onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/share/${s.share_token}`); toast.success('Link copied!'); }}
+                              style={{ color: 'var(--accent)' }}>
+                              🔗
+                            </button>
+                            <button className="btn btn-ghost btn-sm" onClick={() => unshareSession(s.id)}
+                              title="Revoke share link" style={{ color: '#f59e0b' }}>
+                              🔒
+                            </button>
+                          </>
+                        ) : (
+                          <button className="btn btn-ghost btn-sm" onClick={() => shareSession(s.id)} title="Create share link">
+                            🔓
+                          </button>
+                        )}
                         <button className="btn btn-ghost btn-sm" onClick={() => downloadPdf(s.id, s.title)} title="PDF">
                           📄
                         </button>
@@ -210,6 +242,11 @@ export default function HistoryPage() {
                       <p key={i} style={{ marginBottom: '0.5rem' }}>
                         {c.speaker && <span style={{ color: 'var(--accent)', fontWeight: 700, fontSize: '0.8rem' }}>[{c.speaker}] </span>}
                         <span style={{ color: 'var(--accent)', fontWeight: 700, fontSize: '0.75rem' }}>{String(i + 1).padStart(2, '0')}</span>{' '}
+                        {c.start_time > 0 && (
+                          <span className="history-timestamp">
+                            ⏱ {Math.floor(c.start_time / 60)}:{String(Math.floor(c.start_time % 60)).padStart(2, '0')}
+                          </span>
+                        )}
                         {c.text}
                       </p>
                     ))
@@ -225,7 +262,7 @@ export default function HistoryPage() {
                 </div>
 
                 {/* PDF Download */}
-                <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
+                <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                   <button className="btn btn-primary btn-sm" onClick={() => downloadPdf(selected.id, selected.title)}>
                     📄 Download PDF
                   </button>
@@ -235,6 +272,9 @@ export default function HistoryPage() {
                     toast.success('Transcript copied');
                   }}>📋 Copy Transcript</button>
                 </div>
+
+                {/* Transcript Q&A */}
+                <TranscriptChat sessionId={selected.id} />
               </>
             )}
           </div>

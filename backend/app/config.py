@@ -12,6 +12,7 @@ class Settings:
     MAX_UPLOAD_SIZE: int = int(os.getenv("MAX_UPLOAD_SIZE", 50 * 1024 * 1024))  # 50MB
     JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "change-me-in-production")
     JWT_ALGORITHM: str = "HS256"
+    RESEND_API_KEY: str = os.getenv("RESEND_API_KEY", "")
 
 
 settings = Settings()

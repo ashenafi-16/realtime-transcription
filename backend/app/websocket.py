@@ -3,9 +3,10 @@ import os
 import json
 import asyncio
 import logging
+import time
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from app.transcriber import transcribe_audio
-from app.summarizer import summarize_transcript
+from app.services.transcription import transcribe_audio
+from app.services.summarizer import summarize_transcript
 from app.database import async_session
 from app.models import Session, TranscriptChunk, Summary
 from app.auth import decode_token
@@ -51,6 +52,8 @@ async def transcribe_endpoint(websocket: WebSocket):
     session_tags = ""
     session_language = language or ""
     elapsed_seconds = 0
+    chunk_times = []  # start_time for each chunk (seconds from recording start)
+    recording_start = time.time()
 
     # Build initial_prompt from custom vocabulary
     initial_prompt = ""
@@ -80,12 +83,15 @@ async def transcribe_endpoint(websocket: WebSocket):
                     )
 
                     if text.strip():
+                        chunk_start = time.time() - recording_start
                         full_transcript.append(text.strip())
+                        chunk_times.append(chunk_start)
                         await websocket.send_json({
                             "type": "transcript",
-                            "text": text.strip()
+                            "text": text.strip(),
+                            "start_time": round(chunk_start, 1)
                         })
-                        logger.info(f"Sent transcript chunk #{len(full_transcript)}")
+                        logger.info(f"Sent transcript chunk #{len(full_transcript)} at {chunk_start:.1f}s")
                     else:
                         logger.info("Empty transcription — skipped")
                 except Exception as e:
@@ -150,7 +156,8 @@ async def transcribe_endpoint(websocket: WebSocket):
                                         db.add(TranscriptChunk(
                                             session_id=session.id,
                                             index=i,
-                                            text=chunk_text
+                                            text=chunk_text,
+                                            start_time=chunk_times[i] if i < len(chunk_times) else 0.0
                                         ))
 
                                     db.add(Summary(

@@ -6,9 +6,11 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
-from app.websocket import router as ws_router
-from app.routes import router as api_router
+from app.routers import sessions, transcription, chat
+from app.routers.chat import router as chat_router
 from app.auth_routes import router as auth_router
+from app.integrations import router as integrations_router
+from app.websocket import router as ws_router
 from app.database import init_db
 
 # Configure logging
@@ -40,10 +42,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register routers
+# Register routers — modular architecture
 app.include_router(auth_router)
 app.include_router(ws_router)
-app.include_router(api_router)
+app.include_router(sessions.router)
+app.include_router(transcription.router)
+app.include_router(chat_router)
+app.include_router(integrations_router)
 
 
 @app.get("/")

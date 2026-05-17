@@ -23,6 +23,7 @@ export function useTranscription() {
   const audioBlobsRef = useRef([]);
   const chunkIntervalRef = useRef(4000);
   const reconnectRef = useRef(0);
+  const audioRef = useRef(null);
 
   // Load settings
   useEffect(() => {
@@ -72,7 +73,7 @@ export function useTranscription() {
         console.log("Server:", data.type);
 
         if (data.type === "transcript") {
-          setTranscript(prev => [...prev, data.text]);
+          setTranscript(prev => [...prev, { text: data.text, start_time: data.start_time || 0 }]);
         } else if (data.type === "status") {
           setStatus("processing");
         } else if (data.type === "summary_chunk") {
@@ -236,9 +237,20 @@ export function useTranscription() {
   const updateTranscriptChunk = useCallback((index, newText) => {
     setTranscript(prev => {
       const copy = [...prev];
-      copy[index] = newText;
+      if (typeof copy[index] === 'object') {
+        copy[index] = { ...copy[index], text: newText };
+      } else {
+        copy[index] = newText;
+      }
       return copy;
     });
+  }, []);
+
+  const seekAudio = useCallback((seconds) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = seconds;
+      audioRef.current.play();
+    }
   }, []);
 
   const resummarize = useCallback(async (format) => {
@@ -248,11 +260,12 @@ export function useTranscription() {
     setStatus("processing");
 
     try {
+      const joined = transcript.map(c => typeof c === 'object' ? c.text : c).join(" ");
       const res = await fetch("http://localhost:8000/api/resummarize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          transcript: transcript.join(" "),
+          transcript: joined,
           format: format || summaryFormat,
         }),
       });
@@ -285,5 +298,7 @@ export function useTranscription() {
     stopRecording,
     updateTranscriptChunk,
     resummarize,
+    seekAudio,
+    audioRef,
   };
 }

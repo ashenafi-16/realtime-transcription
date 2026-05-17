@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { authFetch } from '../utils/authFetch';
@@ -56,6 +56,15 @@ export default function SettingsPage() {
       return DEFAULT_SETTINGS;
     }
   });
+
+  const [slackWebhook, setSlackWebhook] = useState('');
+
+  useEffect(() => {
+    authFetch('http://localhost:8000/api/share/settings')
+      .then(r => r.ok ? r.json() : {})
+      .then(d => { if (d.slack_webhook_url) setSlackWebhook(d.slack_webhook_url); })
+      .catch(() => {});
+  }, []);
 
   const updateSetting = (key, value) => {
     setSettings(prev => {
@@ -213,6 +222,45 @@ export default function SettingsPage() {
               </select>
             </div>
           </div>
+        </div>
+
+        {/* Integrations */}
+        <div className="card">
+          <div className="card-header">
+            <span className="card-title">🔗 Integrations</span>
+          </div>
+          <div className="setting-row">
+            <div className="setting-label">
+              <strong>Slack Webhook URL</strong>
+              <span>Paste your Slack Incoming Webhook URL to enable one-click sharing</span>
+            </div>
+            <div className="setting-control" style={{ width: '100%' }}>
+              <input
+                type="url"
+                className="input"
+                placeholder="https://hooks.slack.com/services/..."
+                value={slackWebhook}
+                onChange={(e) => setSlackWebhook(e.target.value)}
+                style={{ width: '100%', fontFamily: 'monospace', fontSize: '0.85rem' }}
+              />
+            </div>
+          </div>
+          <button
+            className="btn btn-primary btn-sm"
+            style={{ marginTop: '0.75rem' }}
+            onClick={async () => {
+              try {
+                await authFetch('http://localhost:8000/api/share/settings', {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ slack_webhook_url: slackWebhook }),
+                });
+                toast.success('Slack webhook saved!');
+              } catch (e) {
+                toast.error('Failed to save webhook');
+              }
+            }}
+          >💾 Save Webhook</button>
         </div>
 
         {/* Actions */}
