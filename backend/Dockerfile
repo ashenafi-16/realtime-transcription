@@ -10,14 +10,11 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# Install Python dependencies first (layer caching)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
 COPY . .
 
-# Pre-download the Whisper "base" model so the first request isn't slow
 RUN python -c "import whisper; whisper.load_model('base')"
 
 EXPOSE 8000
