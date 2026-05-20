@@ -276,16 +276,3 @@ All settings are configurable from the Settings page or via environment variable
 | File upload rejected | Ensure file is audio/video and under 50MB |
 | Wrong language detected | Select the correct language from the Dashboard dropdown |
 
----
-
-## 📄 License
-
-MIT License — see [LICENSE](LICENSE) for details.
-
----
-
-<div align="center">
-
-Built with ❤️ using **React**, **FastAPI**, **Whisper**, and **Groq**
-
-</div>
